@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<!--[if lt IE 7 ]> <html lang="sv" class="ie6"> <![endif]-->
+<!--[if IE 7 ]>    <html lang="sv" class="ie7"> <![endif]-->
+<!--[if IE 8 ]>    <html lang="sv" class="ie8"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--> <html lang="sv"> <!--<![endif]-->
+<head>
+<!-- meta -->
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title></title>
+<!-- css -->
+<link rel="stylesheet" type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.7/themes/ui-lightness/jquery-ui.css" />
+
+<!-- javascript -->
+<script src="http://ajax.microsoft.com/ajax/jQuery/jquery-1.4.4.min.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.7/jquery-ui.min.js"></script>
+<!--[if IE]>
+<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+<![endif]-->
+<script src="https://github.com/codler/jQuery-Css3-Finalize/raw/master/static/jquery.css3finalize-latest.min.js"></script>
+<!-- debug -->
+<!-- <script type="text/javascript" src="https://getfirebug.com/firebug-lite.js"></script> -->
+
+<style>
+
+</style>
+<script>
+/**
+ * @author Han Lin Yap < http://zencodez.net/ >
+ * @copyright 2010 zencodez.net
+ * @license http://creativecommons.org/licenses/by-sa/3.0/
+ * @package Ajax-Upload
+ * @version 1.0 - 2010-12-31
+ * @website https://github.com/codler/jQuery-Ajax-Upload
+ *
+ * == Description == 
+ * Uses native XHR to upload files and a modified version of jQuery's ajax
+ *
+ * == Example Usage ==
+ * $.ajaxUpload({
+ *	url: 'upload.php',
+ *	data: ':file',
+ *	success: function (data, status, xhr) {
+ *		console.log(data);
+ *	}
+ * });
+ */
+(function ($) {
+	$.ajaxUploadSettings = {
+		//onloadstart	: function(e){},
+		onprogress	: function(e){ console.log('progress') },
+		onabort 	: function(e){ console.log('abort') },
+		onerror 	: function(e){ console.log('error'); console.log(e) },
+		onload 		: function(e){ console.log('load') },
+		//ontimeout 	: function(e){},
+		//onloadend 	: function(e){}
+	}
+
+	$.fn.ajaxUpload = function(origSettings) {
+		var data = $(this).serializeArray();
+		$('input:file', this).each(function (index, element) {
+			var fieldname = $(this).attr('name');
+			for(var i = 0; i < this.files.length; i++) {
+				data.push({
+					'name' : fieldname, 
+					'value': this.files[i]
+				});
+			}
+		});
+		var s = jQuery.extend(true, {}, origSettings, {data: data});
+		$.ajaxUpload(s);
+		return this;
+	}
+	
+	$.ajaxUploadPost = function( url, data, callback, type ) {
+		// shift arguments if data argument was omited
+		if ( jQuery.isFunction( data ) ) {
+			type = type || callback;
+			callback = data;
+			data = {};
+		}
+
+		return $.ajaxUpload({
+			type: "POST",
+			url: url,
+			data: data,
+			success: callback,
+			dataType: type
+		});
+	}
+	
+	/**
+	 * Available settings
+	 *
+	 * beforeSend(XMLHttpRequest, settings)
+	 * complete(XMLHttpRequest, textStatus)
+	 * context
+	 * data
+	 * dataFilter(data, type)
+	 * dataType
+	 * error(XMLHttpRequest, textStatus, errorThrown)
+	 * global
+	 * ifModified
+	 * password
+	 * success(data, textStatus, XMLHttpRequest)
+	 * timeout
+	 * url
+	 * username
+	 * xhr
+	 
+	 * Not available
+	 *
+	 * async
+	 * cache
+	 * contentType
+	 * jsonp
+	 * jsonpCallback
+	 * processData
+	 * scriptCharset
+	 * traditional
+	 * type
+	 */
+	$.ajaxUpload = function(origSettings) {
+		// Do browser support?
+		if (typeof FormData == "undefined") return false;
+		
+		// Require jQuery +1.4.3
+		if (!$.triggerGlobal) return false;
+		
+		var s = jQuery.extend(true, {}, $.ajaxUploadSettings, origSettings);
+		var nesseserySettings = {
+			async : true,
+			processData : false,
+			type: 'post',
+			beforeSend : function(xhr, s) {
+				xhr.upload.onprogress = s.onprogress;
+				xhr.upload.onabort = s.onabort;
+				xhr.upload.onerror = s.onerror;
+				xhr.upload.onload = s.onload;
+				if (origSettings.beforeSend) {
+					origSettings.beforeSend.call(this, xhr, s);
+				}
+			}
+		}
+		s = jQuery.extend(true, {}, s, nesseserySettings);
+		
+		var fd = new FormData();
+		if (typeof s.data === "string" || s.data instanceof jQuery) {
+			var ele = s.data;
+			if (!(s.data instanceof jQuery)) {
+				ele = $(ele);
+			}
+			var data = [];
+			$(ele).each(function (index, element) {
+				var fieldname = $(this).attr('name');
+				for(var i = 0; i < this.files.length; i++) {
+					data.push({
+						'name' : fieldname, 
+						'value': this.files[i]
+					});
+				}
+			});
+			s.data = data;
+		} 
+
+		// assumed [{name, value}...]
+		if ($.isArray(s.data)) {
+			for(var i = 0; i < s.data.length; i++) {
+				fd.append(s.data[i].name, s.data[i].value);
+			}
+		} else {
+			for(var i in s.data) {
+				fd.append(i, s.data[i]);
+			}
+		}
+		s.data = fd;
+		$.ajaxUploadCustomAjax(s);
+	}
+	
+	// Modified version of jQuery 1.4.4 ajax
+	$.ajaxUploadCustomAjax = function(origSettings) {
+		var s = $.extend(true, {}, $.ajaxSettings, origSettings),
+			status, data, type = s.type.toUpperCase();
+
+		s.url = s.url.replace( /#.*$/, "" );
+
+		// Use original (not extended) context object if it was provided
+		s.context = origSettings && origSettings.context != null ? origSettings.context : s;
+
+		// Watch for a new set of requests
+		if ( s.global && $.active++ === 0 ) {
+			$.event.trigger( "ajaxStart" );
+		}
+		
+		// Matches an absolute URL, and saves the domain
+		var parts = /^(\w+:)?\/\/([^\/?#]+)/.exec( s.url ),
+			remote = parts && (parts[1] && parts[1].toLowerCase() !== location.protocol || parts[2].toLowerCase() !== location.host);
+
+		var requestDone = false;
+
+		// Create the request object
+		var xhr = s.xhr();
+
+		if ( !xhr ) {
+			return;
+		}
+
+		// Open the socket
+		// Passing null username, generates a login popup on Opera (#2865)
+		if ( s.username ) {
+			xhr.open(type, s.url, s.async, s.username, s.password);
+		} else {
+			xhr.open(type, s.url, s.async);
+		}
+
+		// Need an extra try/catch for cross domain requests in Firefox 3
+		try {
+			// Set the If-Modified-Since and/or If-None-Match header, if in ifModified mode.
+			if ( s.ifModified ) {
+				if ( $.lastModified[s.url] ) {
+					xhr.setRequestHeader("If-Modified-Since", $.lastModified[s.url]);
+				}
+
+				if ( $.etag[s.url] ) {
+					xhr.setRequestHeader("If-None-Match", $.etag[s.url]);
+				}
+			}
+
+			// Set header so the called script knows that it's an XMLHttpRequest
+			// Only send the header if it's not a remote XHR
+			if ( !remote ) {
+				xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+			}
+
+			// Set the Accepts header for the server, depending on the dataType
+			xhr.setRequestHeader("Accept", s.dataType && s.accepts[ s.dataType ] ?
+				s.accepts[ s.dataType ] + ", */*; q=0.01" :
+				s.accepts._default );
+		} catch( headerError ) {}
+
+		// Allow custom headers/mimetypes and early abort
+		if ( s.beforeSend && s.beforeSend.call(s.context, xhr, s) === false ) {
+			// Handle the global AJAX counter
+			if ( s.global && $.active-- === 1 ) {
+				$.event.trigger( "ajaxStop" );
+			}
+
+			// close opended socket
+			xhr.abort();
+			return false;
+		}
+
+		if ( s.global ) {
+			$.triggerGlobal( s, "ajaxSend", [xhr, s] );
+		}
+		
+		// Wait for a response to come back
+		var onreadystatechange = xhr.onreadystatechange = function( isTimeout ) {
+			// The request was aborted
+			if ( !xhr || xhr.readyState === 0 || isTimeout === "abort" ) {
+				// Opera doesn't call onreadystatechange before this point
+				// so we simulate the call
+				if ( !requestDone ) {
+					$.handleComplete( s, xhr, status, data );
+				}
+
+				requestDone = true;
+				if ( xhr ) {
+					xhr.onreadystatechange = $.noop;
+				}
+
+			// The transfer is complete and the data is available, or the request timed out
+			} else if ( !requestDone && xhr && (xhr.readyState === 4 || isTimeout === "timeout") ) {
+				requestDone = true;
+				xhr.onreadystatechange = $.noop;
+
+				status = isTimeout === "timeout" ?
+					"timeout" :
+					!$.httpSuccess( xhr ) ?
+						"error" :
+						s.ifModified && $.httpNotModified( xhr, s.url ) ?
+							"notmodified" :
+							"success";
+
+				var errMsg;
+
+				if ( status === "success" ) {
+					// Watch for, and catch, XML document parse errors
+					try {
+						// process the data (runs the xml through httpData regardless of callback)
+						data = $.httpData( xhr, s.dataType, s );
+					} catch( parserError ) {
+						status = "parsererror";
+						errMsg = parserError;
+					}
+				}
+
+				// Make sure that the request was successful or notmodified
+				if ( status === "success" || status === "notmodified" ) {
+					$.handleSuccess( s, xhr, status, data );
+				} else {
+					$.handleError( s, xhr, status, errMsg );
+				}
+
+				// Fire the complete handlers
+				$.handleComplete( s, xhr, status, data );
+
+				if ( isTimeout === "timeout" ) {
+					xhr.abort();
+				}
+
+				// Stop memory leaks
+				xhr = null;
+			}
+		};
+
+		// Override the abort handler, if we can (IE 6 doesn't allow it, but that's OK)
+		// Opera doesn't fire onreadystatechange at all on abort
+		try {
+			var oldAbort = xhr.abort;
+			xhr.abort = function() {
+				if ( xhr ) {
+					// oldAbort has no call property in IE7 so
+					// just do it this way, which works in all
+					// browsers
+					Function.prototype.call.call( oldAbort, xhr );
+				}
+
+				onreadystatechange( "abort" );
+			};
+		} catch( abortError ) {}
+
+		// Timeout checker
+		if ( s.async && s.timeout > 0 ) {
+			setTimeout(function() {
+				// Check to see if the request is still happening
+				if ( xhr && !requestDone ) {
+					onreadystatechange( "timeout" );
+				}
+			}, s.timeout);
+		}
+
+		// Send the data
+		try {
+			xhr.send( s.data == null ? null : s.data );
+
+		} catch( sendError ) {
+			$.handleError( s, xhr, null, sendError );
+
+			// Fire the complete handlers
+			$.handleComplete( s, xhr, status, data );
+		}
+
+		// return XMLHttpRequest to allow aborting the request etc.
+		return xhr;
+
+	}
+})(jQuery);
+
+jQuery(function ($) {
+	$('form').submit(function () {
+		$.ajaxUpload({
+			url: 'upload.php',
+			data: ':file',
+			success: function (data, status, xhr) {
+				console.log(data);
+			}
+		});
+		
+		/* Example minimal */
+		$(this).ajaxUpload({
+			url: 'upload.php'
+		});
+		
+		/* Example 2 minimal */
+		$.ajaxUploadPost('upload.php', ':file', function (data) { console.log(2) });
+		
+		/* Example 3 */
+		$.ajaxUploadPost('upload.php', $(':file'), function (data) { console.log(3) });
+		return false;
+	});
+});
+</script>
+</head>
+<body>
+<form>
+<input type="file" name="uploads[]" multiple />
+<input type="text" name="name" />
+<input type="text" />
+<input type="submit" value="skicka" />
+</form>
+</body>
+</html>
