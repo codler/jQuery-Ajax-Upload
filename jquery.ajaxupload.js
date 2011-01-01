@@ -1,30 +1,3 @@
-<!DOCTYPE html>
-<!--[if lt IE 7 ]> <html lang="sv" class="ie6"> <![endif]-->
-<!--[if IE 7 ]>    <html lang="sv" class="ie7"> <![endif]-->
-<!--[if IE 8 ]>    <html lang="sv" class="ie8"> <![endif]-->
-<!--[if (gte IE 9)|!(IE)]><!--> <html lang="sv"> <!--<![endif]-->
-<head>
-<!-- meta -->
-<meta charset="utf-8" />
-<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title></title>
-
-<!-- javascript -->
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js"></script>
-<!-- <script src="http://code.jquery.com/jquery-git.js"></script> -->
-<!--[if IE]>
-<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-<![endif]-->
-<!-- <script src="https://github.com/codler/jQuery-Css3-Finalize/raw/master/jquery.css3finalize.js"></script> -->
-<!-- debug -->
-<!-- <script type="text/javascript" src="https://getfirebug.com/firebug-lite.js"></script> -->
-
-<style>
-
-</style>
-<script>
 /**
  * @author Han Lin Yap < http://zencodez.net/ >
  * @copyright 2010 zencodez.net
@@ -177,39 +150,3 @@
 		$.ajax(s);
 	}
 })(jQuery);
-
-jQuery(function ($) {
-	$('form').submit(function () {
-		$.ajaxUpload({
-			url: 'upload.php',
-			data: ':file',
-			success: function (data, status, xhr) {
-				console.log(data);
-			}
-		});
-		
-		/* Example minimal */
-		$(this).ajaxUpload({
-			url: 'upload.php',
-			data: { hej: 'ds'}
-		});
-		
-		/* Example 2 minimal */
-		$.ajaxUploadPost('upload.php', ':file', function (data) { console.log(2) }); 
-		
-		/* Example 3 */
-		$.ajaxUploadPost('upload.php', $(':file'), function (data) { console.log(3) });
-		return false;
-	});
-});
-</script>
-</head>
-<body>
-<form>
-<input type="file" name="uploads[]" multiple />
-<input type="text" name="name" />
-<input type="text" />
-<input type="submit" value="skicka" />
-</form>
-</body>
-</html>
