@@ -3,7 +3,7 @@
  * @copyright 2010 zencodez.net
  * @license http://creativecommons.org/licenses/by-sa/3.0/
  * @package Ajax-Upload
- * @version 1.1 - 2011-01-01
+ * @version 1.2 - 2011-01-02
  * @website https://github.com/codler/jQuery-Ajax-Upload
  *
  * == Description == 
@@ -19,12 +19,13 @@
  * });
  */
 (function ($) {
+	$.support.ajax2 = $.support.ajax && typeof FormData != "undefined";
 	$.ajaxUploadSettings = {
 		//onloadstart	: function(e){},
 		onprogress	: function(e){ console.log('progress') },
 		onabort 	: function(e){ console.log('abort') },
 		onerror 	: function(e){ console.log('error'); console.log(e) },
-		onload 		: function(e){ console.log('load') },
+		onload 		: function(e){ console.log('load') }
 		//ontimeout 	: function(e){},
 		//onloadend 	: function(e){}
 	}
@@ -42,8 +43,8 @@
 	}
 	
 	/**
-	 * @param kv array [{name, value},..]
-	 * @param exist FormData Existing FormData
+	 * @param array kv [{name, value},..]
+	 * @param FormData exist Existing FormData
 	 */
 	$.ajaxUploadToFormData = function( kv, exist ) {
 		var fd = exist || new FormData();
@@ -54,8 +55,8 @@
 	}
 	
 	$.ajaxUploadExtractData = function( data, exist ) {
-		if (!data || data instanceof FormData ) return data;
-		var fd = $.ajaxUploadExtractData(exist) || new FormData();
+		if ( !data || $.isArray(data)/* || data instanceof FormData*/ ) return data;
+		//var fd = $.ajaxUploadExtractData(exist) || new FormData();
 		if ( typeof data === "string" || data instanceof jQuery ) {
 			var kv = [];
 			$(data).each(function (index, element) {
@@ -72,39 +73,7 @@
 			}
 			data = temp;
 		}
-		return $.ajaxUploadToFormData(data, fd);
-	}
-
-	$.fn.ajaxUpload = function( origSettings ) {
-		// Do browser support?
-		if ( typeof FormData == "undefined" ) return false;
-		
-		var data = $(this).serializeArray();
-		$('input:file', this).each(function (index, element) {
-			$.merge( data, $.ajaxUploadSerializeFiles(this) );
-		});
-		if ( origSettings.data ) {
-			origSettings.data = $.ajaxUploadExtractData(data, origSettings.data);
-		}
-		$.ajaxUpload(origSettings);
-		return this;
-	}
-	
-	$.ajaxUploadPost = function( url, data, callback, type ) {
-		// shift arguments if data argument was omited
-		if ( jQuery.isFunction( data ) ) {
-			type = type || callback;
-			callback = data;
-			data = {};
-		}
-
-		return $.ajaxUpload({
-			type: "POST",
-			url: url,
-			data: data,
-			success: callback,
-			dataType: type
-		});
+		return /*$.ajaxUploadToFormData(*/data/*, fd)*/;
 	}
 	
 	/**
@@ -114,16 +83,18 @@
 	 * processData
 	 * type
 	 */
+	 // idea: prompt
 	$.ajaxUpload = function(origSettings) {
 		// Do browser support?
-		if (typeof FormData == "undefined") return false;
+		if ( !$.support.ajax2 ) return false;
 		
 		// Merge Global settings
 		var s = jQuery.extend(true, {}, $.ajaxUploadSettings, origSettings);
 		
 		// Normalize data
 		var fd = $.ajaxUploadExtractData(s.data);
-		
+		console.log(fd);
+		fd = $.ajaxUploadToFormData(fd);
 		// Set nessessery settings
 		s.data = null;
 		var nesseserySettings = {
@@ -145,8 +116,107 @@
 		if (s.contentType) {
 			delete s.contentType;
 		}
-		
 		// Upload
 		$.ajax(s);
+	}
+
+	$.fn.ajaxUpload = function( origSettings ) {
+		// Do browser support?
+		if ( !$.support.ajax2 ) return false;
+		
+		$(this).each(function() {
+			var data = $(this).serializeArray();
+			$('input:file', this).each(function (index, element) {
+				$.merge( data, $.ajaxUploadSerializeFiles(this) );
+			});
+			if ( origSettings.data ) {
+				origSettings.data = $.ajaxUploadExtractData(data/*, origSettings.data*/);
+			}
+			$.ajaxUpload(origSettings);
+		});
+		return this;
+	}
+	
+	$.ajaxUploadPost = function( url, data, callback, type ) {
+		// shift arguments if data argument was omited
+		if ( jQuery.isFunction( data ) ) {
+			type = type || callback;
+			callback = data;
+			data = {};
+		}
+
+		return $.ajaxUpload({
+			type: "POST",
+			url: url,
+			data: data,
+			success: callback,
+			dataType: type
+		});
+	}
+
+	$.ajaxUploadPrompt = function( url, data, callback, type ) {
+		if ( !$.support.ajax2 ) return false;
+		
+		// shift arguments if data argument was omited
+		if ( jQuery.isFunction( data ) ) {
+			type = type || callback;
+			callback = data;
+			data = {};
+		}
+		var id = 'ajaxupload' + new Date().getTime();
+		var form = $('<form method="post" enctype="multipart/form-data" target="' + id + '" />').appendTo('body');
+		form.css({
+			position: 'relative',
+			top: -1000,
+			left: -1000,
+			opacity: 0
+		});
+		var d = $('<input type="file" multiple name="uploads[]" />').appendTo(form);
+		d.change(function() {
+			data = $.ajaxUploadExtractData(data);
+			
+			/*
+			// Do browser support?
+			if ( !$.support.ajax2 ) {
+				var iframe = $('<iframe src="javascript:false;" name="' + id + '" />').appendTo('body');
+				iframe.bind('load', function() {
+					alert('load');
+					if (!iframe[0].parentNode){
+						return;
+					}
+					
+					var doc = iframe[0].contentDocument ? iframe[0].contentDocument: iframe[0].contentWindow.document
+					var data = doc.body.innerHTML;
+					callback(data);
+					$(this).unbind('load');
+					form.remove();
+				});
+				
+				form.submit();
+				return false;
+			}*/
+			
+			$.merge( data, $.ajaxUploadSerializeFiles(this) );
+			$.ajaxUpload({
+				url: url,
+				data: data,
+				success: function () {
+					callback.apply(this, arguments);
+					form.remove();
+				},
+				dataType: type
+			});
+		});
+		d.click();
+	}
+	
+	// bind a click event
+	$.fn.ajaxUploadPrompt = function( url, data, callback, type ) {
+		$(this).each(function() {
+			$(this).click(function () {
+				$.ajaxUploadPrompt( url, data, callback, type );
+			});
+		});
+		return this;
 	}
 })(jQuery);
