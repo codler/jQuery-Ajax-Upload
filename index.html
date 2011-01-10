@@ -29,10 +29,10 @@
 <script>
 /**
  * @author Han Lin Yap < http://zencodez.net/ >
- * @copyright 2010 zencodez.net
+ * @copyright 2011 zencodez.net
  * @license http://creativecommons.org/licenses/by-sa/3.0/
  * @package Ajax-Upload
- * @version 1.2 - 2011-01-02
+ * @version 1.3 - 2011-01-10
  * @website https://github.com/codler/jQuery-Ajax-Upload
  *
  * == Description == 
@@ -106,13 +106,11 @@
 	}
 	
 	/**
-	 * Not available
-	 *
+	 * All available options as $.ajax() except
 	 * contentType
 	 * processData
 	 * type
 	 */
-	 // idea: prompt
 	$.ajaxUpload = function(origSettings) {
 		// Do browser support?
 		if ( !$.support.ajax2 ) return false;
@@ -122,7 +120,6 @@
 		
 		// Normalize data
 		var fd = $.ajaxUploadExtractData(s.data);
-		console.log(fd);
 		fd = $.ajaxUploadToFormData(fd);
 		// Set nessessery settings
 		s.data = null;
@@ -153,7 +150,7 @@
 		// Do browser support?
 		if ( !$.support.ajax2 ) return false;
 		
-		$(this).each(function() {
+		this.each(function() {
 			var data = $(this).serializeArray();
 			$('input:file', this).each(function (index, element) {
 				$.merge( data, $.ajaxUploadSerializeFiles(this) );
@@ -241,7 +238,7 @@
 	
 	// bind a click event
 	$.fn.ajaxUploadPrompt = function( url, data, callback, type ) {
-		$(this).each(function() {
+		this.each(function() {
 			$(this).click(function () {
 				$.ajaxUploadPrompt( url, data, callback, type );
 			});

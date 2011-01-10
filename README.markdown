@@ -1,9 +1,10 @@
 # Ajax Upload
 
 Browser need to support FormData
-Chrome
-Firefox 4
-Safari 5
+
+* Chrome
+* Firefox 4
+* Safari 5
 
 ## How to use
 
