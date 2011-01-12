@@ -1,3 +1,21 @@
+<?php 
+require_once('secure_upload.php');
+
+$options = array(
+	'field' => 'uploads',
+	'path' => dirname(__file__) . '/img'
+);
+
+#echo f::folder_size($options['path']);
+$r = secure_upload($options);
+echo print_r($r, true);
+if ($r['success']) {
+	foreach ($r['success'] AS $file) {
+		f::remove($options['path'] . '/' . str_replace('..', '.', $file['filename']));
+	}
+}
+die();
+?>
 <span><?php echo $_POST['name']; ?><span>
 <pre><?php echo print_r($_FILES); ?></pre>
 <?php if (array_key_exists('uploads', $_FILES)) : ?>

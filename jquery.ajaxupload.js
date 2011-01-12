@@ -3,7 +3,7 @@
  * @copyright 2011 zencodez.net
  * @license http://creativecommons.org/licenses/by-sa/3.0/
  * @package Ajax-Upload
- * @version 1.3 - 2011-01-10
+ * @version 1.4 - 2011-01-12
  * @website https://github.com/codler/jQuery-Ajax-Upload
  *
  * == Description == 
@@ -25,9 +25,10 @@
 		onprogress	: function(e){ console.log('progress') },
 		onabort 	: function(e){ console.log('abort') },
 		onerror 	: function(e){ console.log('error'); console.log(e) },
-		onload 		: function(e){ console.log('load') }
+		onload 		: function(e){ console.log('load') },
 		//ontimeout 	: function(e){},
-		//onloadend 	: function(e){}
+		//onloadend 	: function(e){},
+		name		: 'uploads[]'
 	}
 	
 	$.ajaxUploadSerializeFiles = function( element ) {
@@ -55,15 +56,25 @@
 	}
 	
 	$.ajaxUploadExtractData = function( data, exist ) {
-		if ( !data || $.isArray(data)/* || data instanceof FormData*/ ) return data;
-		//var fd = $.ajaxUploadExtractData(exist) || new FormData();
+		if ( !data/* || $.isArray(data)*/ || data instanceof FormData ) return data;
+		var fd = $.ajaxUploadExtractData(exist) || new FormData();
 		if ( typeof data === "string" || data instanceof jQuery ) {
 			var kv = [];
 			$(data).each(function (index, element) {
 				$.merge( kv, $.ajaxUploadSerializeFiles(this) );
 			});
 			data = kv;
-		} else if (typeof data === "object") {
+		} else if (data instanceof FileList) {
+			console.log($.ajaxUploadSettings.name);
+			var kv = [];
+			for(var i = 0, len = data.length; i < len; i++) {
+				kv.push({
+					'name' : $.ajaxUploadSettings.name, 
+					'value': data[i]
+				});
+			}
+			data = kv;
+		} else if (typeof data === "object" && !$.isArray(data)) {
 			var temp = [];
 			for(name in data) {
 				temp.push({
@@ -73,7 +84,7 @@
 			}
 			data = temp;
 		}
-		return /*$.ajaxUploadToFormData(*/data/*, fd)*/;
+		return $.ajaxUploadToFormData(data, fd);
 	}
 	
 	/**
@@ -91,7 +102,7 @@
 		
 		// Normalize data
 		var fd = $.ajaxUploadExtractData(s.data);
-		fd = $.ajaxUploadToFormData(fd);
+		//fd = $.ajaxUploadToFormData(fd);
 		// Set nessessery settings
 		s.data = null;
 		var nesseserySettings = {
@@ -126,9 +137,8 @@
 			$('input:file', this).each(function (index, element) {
 				$.merge( data, $.ajaxUploadSerializeFiles(this) );
 			});
-			if ( origSettings.data ) {
-				origSettings.data = $.ajaxUploadExtractData(data/*, origSettings.data*/);
-			}
+			var options = jQuery.extend(true, {}, origSettings);
+			options.data = $.ajaxUploadExtractData(data, options.data);
 			$.ajaxUpload(origSettings);
 		});
 		return this;
@@ -170,7 +180,7 @@
 		});
 		var d = $('<input type="file" multiple name="uploads[]" />').appendTo(form);
 		d.change(function() {
-			data = $.ajaxUploadExtractData(data);
+			data = $.ajaxUploadExtractData(data, $.ajaxUploadSerializeFiles(this));
 			
 			/*
 			// Do browser support?
@@ -193,7 +203,7 @@
 				return false;
 			}*/
 			
-			$.merge( data, $.ajaxUploadSerializeFiles(this) );
+			//$.merge( data, $.ajaxUploadSerializeFiles(this) );
 			$.ajaxUpload({
 				url: url,
 				data: data,
@@ -212,6 +222,25 @@
 		this.each(function() {
 			$(this).click(function () {
 				$.ajaxUploadPrompt( url, data, callback, type );
+			});
+		});
+		return this;
+	}
+	
+	// bind a drop event
+	$.fn.ajaxUploadDrop = function( origSettings ) {
+		if ( !$.support.ajax2 ) return false;
+	
+		this.each(function() {
+			$(this).bind("dragenter dragover",function(e) {
+				e.stopPropagation(); e.preventDefault();
+			}).bind("drop",function(e) {
+				e.stopPropagation(); e.preventDefault();
+				var dt = e.originalEvent.dataTransfer;  
+				var files = dt.files;
+				var options = jQuery.extend(true, {}, origSettings);
+				options.data = $.ajaxUploadExtractData(files, options.data);
+				$.ajaxUpload(options);
 			});
 		});
 		return this;
