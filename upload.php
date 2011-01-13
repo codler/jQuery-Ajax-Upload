@@ -6,9 +6,8 @@ $options = array(
 	'path' => dirname(__file__) . '/img'
 );
 
-#echo f::folder_size($options['path']);
 $r = secure_upload($options);
-echo print_r($r, true);
+echo json_encode($r);
 if ($r['success']) {
 	foreach ($r['success'] AS $file) {
 		f::remove($options['path'] . '/' . str_replace('..', '.', $file['filename']));

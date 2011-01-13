@@ -6,6 +6,11 @@ Browser need to support FormData
 * Firefox 4
 * Safari 5
 
+## Features
+
+* Drag and drop files
+* Prompt
+
 ## How to use
 
 	// You can use same options as $.ajax();
@@ -26,6 +31,9 @@ Browser need to support FormData
 	
 	// Same as above, with a difference, it binds a click event.
 	$(button).ajaxUploadPrompt(url, [ data ], [ success(data, textStatus, XMLHttpRequest) ], [ dataType ]);
+	
+	// Make a dropzone for uploading files
+	$(element).ajaxUploadDrop(options);
 
 ## Feedback
 

@@ -38,7 +38,7 @@
  * @copyright 2011 zencodez.net
  * @license http://creativecommons.org/licenses/by-sa/3.0/
  * @package Ajax-Upload
- * @version 1.4 - 2011-01-12
+ * @version 1.5 - 2011-01-13
  * @website https://github.com/codler/jQuery-Ajax-Upload
  *
  * == Description == 
@@ -100,7 +100,6 @@
 			});
 			data = kv;
 		} else if (data instanceof FileList) {
-			console.log($.ajaxUploadSettings.name);
 			var kv = [];
 			for(var i = 0, len = data.length; i < len; i++) {
 				kv.push({
@@ -215,6 +214,7 @@
 		});
 		var d = $('<input type="file" multiple name="uploads[]" />').appendTo(form);
 		d.change(function() {
+			console.log('change');
 			data = $.ajaxUploadExtractData(data, $.ajaxUploadSerializeFiles(this));
 			
 			/*
@@ -250,6 +250,9 @@
 			});
 		});
 		d.click();
+		if (navigator.userAgent.indexOf('Safari') > 0 && navigator.vendor.indexOf('Apple') !== -1) {
+			d.change();
+		}
 	}
 	
 	// bind a click event
@@ -265,17 +268,46 @@
 	// bind a drop event
 	$.fn.ajaxUploadDrop = function( origSettings ) {
 		if ( !$.support.ajax2 ) return false;
-	
+		var fakeSafariDragDrop = navigator.userAgent.indexOf('Safari') > 0 && navigator.vendor.indexOf('Apple') !== -1;
 		this.each(function() {
-			$(this).bind("dragenter dragover",function(e) {
-				e.stopPropagation(); e.preventDefault();
+			var $this = $(this);
+			$this.one("dragenter",function(e) {
+				if (fakeSafariDragDrop) {
+					var d = $('<input type="file" multiple name="uploads[]" />').appendTo($this);
+					d.css({
+						position : 'absolute',
+						display : 'block',
+						top : $this.position().top,
+						left : $this.position().left,
+						width : $this.outerWidth(),
+						height : $this.outerHeight(),
+						opacity : 0
+					});
+					d.change(function() {
+						var options = jQuery.extend(true, {}, origSettings);
+						options.data = $.ajaxUploadExtractData(this.files, options.data);
+						$.ajaxUpload(options);
+					});
+				} else {
+					e.stopPropagation(); e.preventDefault();
+				}
+			}).bind("dragover",function(e) {
+				if (fakeSafariDragDrop) {
+				
+				} else {
+					e.stopPropagation(); e.preventDefault();
+				}
 			}).bind("drop",function(e) {
-				e.stopPropagation(); e.preventDefault();
-				var dt = e.originalEvent.dataTransfer;  
-				var files = dt.files;
-				var options = jQuery.extend(true, {}, origSettings);
-				options.data = $.ajaxUploadExtractData(files, options.data);
-				$.ajaxUpload(options);
+				if (fakeSafariDragDrop) {
+				
+				} else {
+					e.stopPropagation(); e.preventDefault();
+					var dt = e.originalEvent.dataTransfer;  
+					var files = dt.files;
+					var options = jQuery.extend(true, {}, origSettings);
+					options.data = $.ajaxUploadExtractData(files, options.data);
+					$.ajaxUpload(options);
+				}
 			});
 		});
 		return this;
@@ -308,14 +340,7 @@ jQuery(function ($) {
 	});
 	
 	// Ajax Upload prompt
-	$('#prompt').click(function () {
-		$.ajaxUploadPrompt('upload.php', function (data) { console.log(data); $('#result').html(data); }); 
-	});
-	
-	// Ajax Upload drop
-	$("#droppable").bind("dragenter dragover",function(event) {
-		event.stopPropagation(); event.preventDefault();
-	});
+	$('#prompt').ajaxUploadPrompt('upload.php', function (data) { console.log(data); $('#result').html(data); }); 
 	
 	$("#droppable").ajaxUploadDrop({
 		url: 'upload.php',

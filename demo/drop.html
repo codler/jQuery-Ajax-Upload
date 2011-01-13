@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<!--[if lt IE 8 ]> <html lang="sv" class="ie7"> <![endif]-->
+<!--[if IE 8 ]>    <html lang="sv" class="ie8"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--> <html lang="sv"> <!--<![endif]-->
+<head>
+<!-- meta -->
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title></title>
+<!-- css -->
+<link rel="stylesheet" type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.7/themes/ui-lightness/jquery-ui.css" />
+
+<!-- javascript -->
+<script src="http://ajax.microsoft.com/ajax/jQuery/jquery-1.4.4.min.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.7/jquery-ui.min.js"></script>
+<!--[if IE]>
+<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+<![endif]-->
+<script src="https://github.com/codler/jQuery-Css3-Finalize/raw/master/static/jquery.css3finalize-latest.min.js"></script>
+<!-- debug -->
+<!--[if IE]>
+<script type="text/javascript" src="https://getfirebug.com/firebug-lite.js"></script>
+<![endif]-->
+
+<script src="jquery.ajaxupload.js"></script>
+
+<style>
+body {
+	color: #666;
+	font-size: 20px;
+	text-align: center;
+}
+
+p {
+	margin: 0px;
+}
+
+#wrapper {
+	margin: 0 auto;
+	padding: 0 30px;
+	min-height: 400px;
+	width: 500px;
+}
+
+#dropzone {
+	border: 3px dashed #ccc;
+	padding-top: 40px;
+	margin: 0 auto;
+	height: 100px;
+	width: 450px;
+}
+
+#dropzone span {
+	font-size: 10px;
+}
+</style>
+<script>
+jQuery(function ($) {
+	// Set fieldname
+	$.ajaxUploadSettings.name = 'uploads[]';
+	// Set dropzone
+	$('#dropzone').ajaxUploadDrop({
+		url : 'upload.php',
+		beforeSend : function () {
+			$('#dropzone, #result').hide();
+		},
+		onprogress : function (e) {
+			if (e.lengthComputable) {
+				var percentComplete = e.loaded / e.total;
+				// Show in progressbar
+				$( "#progressbar" ).progressbar({ 
+					value: percentComplete*100,
+					complete: function () {
+						$(this).progressbar( "destroy" );
+					}
+				});
+			}
+		},
+		error : function () {
+		},
+		success : function (data) {
+			data = $.parseJSON(data);
+			var html = '';
+			if (data.error) {
+				html += '<h2>Error</h2>';
+				html += '<p>' + data.error + '</p>';
+			}
+			if (data.success) {
+				html += '<h2>Success</h2>';
+				for (var i = 0, len = data.success.length; i < len ; i++) {
+					html += '<p>' + data.success[i].filename + '</p>';
+				}
+			}
+			if (data.failed) {
+				html += '<h2>Failed</h2>';
+				html += '<p>Files failed: ' + data.failed + '</p>';
+			}
+			$( "#progressbar" ).progressbar( "destroy" );
+			$('#result').html(html);
+			$('#dropzone, #result').show();
+		}
+	});
+});
+</script>
+</head>
+<body>
+<div id="wrapper">
+	<h1>ajaxUploadDrop()</h1>
+	<div id="dropzone">
+		Drag and drop files in this box to upload images
+		<br />
+		<span>Max 20 files, total 8mb and only image files</span>
+	</div>
+	<div id="progressbar"></div>
+	<div id="result"></div>
+</div>
+<a href="https://github.com/codler/jQuery-Ajax-Upload"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://assets1.github.com/img/7afbc8b248c68eb468279e8c17986ad46549fb71?repo=&url=http%3A%2F%2Fs3.amazonaws.com%2Fgithub%2Fribbons%2Fforkme_right_darkblue_121621.png&path=" alt="Fork me on GitHub"></a>
+</body>
+</html>
