@@ -38,7 +38,7 @@
  * @copyright 2011 zencodez.net
  * @license http://creativecommons.org/licenses/by-sa/3.0/
  * @package Ajax-Upload
- * @version 1.5 - 2011-01-13
+ * @version 1.6 - 2011-01-13
  * @website https://github.com/codler/jQuery-Ajax-Upload
  *
  * == Description == 
@@ -54,6 +54,9 @@
  * });
  */
 (function ($) {
+	var needOverlay = $.browser.msie || $.browser.opera || 
+				($.browser.mozilla && parseInt($.browser.version.substr(0,1)) < 2);
+
 	$.support.ajax2 = $.support.ajax && typeof FormData != "undefined";
 	$.ajaxUploadSettings = {
 		//onloadstart	: function(e){},
@@ -195,72 +198,88 @@
 		});
 	}
 
-	$.ajaxUploadPrompt = function( url, data, callback, type ) {
-		if ( !$.support.ajax2 ) return false;
+	$.ajaxUploadPrompt = function( options ) {
+		//if ( !$.support.ajax2 ) return false;
 		
-		// shift arguments if data argument was omited
-		if ( jQuery.isFunction( data ) ) {
-			type = type || callback;
-			callback = data;
-			data = {};
+		if (!options.data) {
+			options.data = {};
 		}
+		
+		var nesseserySettings = {
+			success : function () {
+				if (options.success) {
+					options.success.apply(this, arguments);
+				}
+				form.remove();
+			}
+		}
+		
+		s = jQuery.extend(true, {}, options, nesseserySettings);
+		
 		var id = 'ajaxupload' + new Date().getTime();
-		var form = $('<form method="post" enctype="multipart/form-data" target="' + id + '" />').appendTo('body');
+		var form = $('<form action="' + s.url + '" method="post" enctype="multipart/form-data" target="' + id + '" />').appendTo('body');
 		form.css({
 			position: 'relative',
 			top: -1000,
 			left: -1000,
 			opacity: 0
 		});
-		var d = $('<input type="file" multiple name="uploads[]" />').appendTo(form);
-		d.change(function() {
-			console.log('change');
-			data = $.ajaxUploadExtractData(data, $.ajaxUploadSerializeFiles(this));
-			
-			/*
-			// Do browser support?
-			if ( !$.support.ajax2 ) {
-				var iframe = $('<iframe src="javascript:false;" name="' + id + '" />').appendTo('body');
-				iframe.bind('load', function() {
-					alert('load');
-					if (!iframe[0].parentNode){
-						return;
-					}
-					
-					var doc = iframe[0].contentDocument ? iframe[0].contentDocument: iframe[0].contentWindow.document
-					var data = doc.body.innerHTML;
-					callback(data);
-					$(this).unbind('load');
-					form.remove();
-				});
-				
-				form.submit();
+		form.submit(function () { //alert($(':file', this).val()); 
+		});
+		var d = $('<input type="file" multiple name="' + $.ajaxUploadSettings.name + '" />').appendTo(form);
+		d.change(function() {			
+			if (!this.files.length) {
 				return false;
-			}*/
+			}
+			s.data = $.ajaxUploadExtractData(s.data, $.ajaxUploadSerializeFiles(this));
 			
-			//$.merge( data, $.ajaxUploadSerializeFiles(this) );
-			$.ajaxUpload({
-				url: url,
-				data: data,
-				success: function () {
-					callback.apply(this, arguments);
-					form.remove();
-				},
-				dataType: type
-			});
+			$.ajaxUpload(s);
 		});
 		d.click();
-		if (navigator.userAgent.indexOf('Safari') > 0 && navigator.vendor.indexOf('Apple') !== -1) {
+		if (navigator.userAgent.indexOf('Safari') > 0 && navigator.vendor.indexOf('Apple') !== -1 || $.browser.msie) {
 			d.change();
 		}
 	}
 	
 	// bind a click event
-	$.fn.ajaxUploadPrompt = function( url, data, callback, type ) {
+	$.fn.ajaxUploadPrompt = function( origSettings ) {
 		this.each(function() {
-			$(this).click(function () {
-				$.ajaxUploadPrompt( url, data, callback, type );
-			});
+			if (needOverlay) {
+				var $this = $(this);
+				var id = 'ajaxupload' + new Date().getTime();
+				var form = $('<form action="' + origSettings.url + '" method="post" enctype="multipart/form-data" target="' + id + '" />').insertAfter($this);
+				var p = $('<p style="top: ' + $this.offset().top + 'px; left: ' + $this.offset().left + 'px; height: ' + $this.outerHeight() + 'px; width: ' + $this.outerWidth() + 'px; overflow: hidden; position: absolute;"/>').appendTo(form);
+				var d = $('<input type="file" multiple name="' + $.ajaxUploadSettings.name + '" style="position: absolute; top: 0; right: 0; font-size: ' + $this.outerHeight() + 'px; cursor: pointer;" />').appendTo(p);
+				d.css({
+					opacity: 0
+				});
+				d.change(function() {
+					var iframeSrc = /^https/i.test(window.location.href || '') ? 'javascript:false' : 'about:blank';
+					var iframe = $('<iframe src="' + iframeSrc + '" id="' + id + '" name="' + id + '" style="display: none;" />').appendTo('body');
+					iframe.bind('load', function() {
+						if (!iframe[0].parentNode){
+							return;
+						}
+						
+						var doc = iframe[0].contentDocument ? iframe[0].contentDocument: iframe[0].contentWindow.document
+						var data = doc.body.innerHTML;
+						if (origSettings.success) {
+							origSettings.success.call(this, data);
+						}
+						iframe.unbind('load');
+						setTimeout(function () { iframe.remove(); }, 100);
+					});
+					form.submit();
+					
+					/* var options = jQuery.extend(true, {}, origSettings);
+					options.data = $.ajaxUploadExtractData(this.files, options.data);
+					$.ajaxUpload(options); */
+				});
+			} else {
+				$(this).click(function () {
+					$.ajaxUploadPrompt( origSettings );
+				});
+			}
 		});
 		return this;
 	}
@@ -340,7 +359,20 @@ jQuery(function ($) {
 	});
 	
 	// Ajax Upload prompt
-	$('#prompt').ajaxUploadPrompt('upload.php', function (data) { console.log(data); $('#result').html(data); }); 
+	$('#prompt').ajaxUploadPrompt({
+		url: 'upload.php',
+		onprogress: function (e) {
+			if (e.lengthComputable) {
+				var percentComplete = e.loaded / e.total;
+				console.log(percentComplete);
+				$( "#progress" ).progressbar({ value: percentComplete*100 });
+			}
+		},
+		success: function (data, status, xhr) {
+			console.log(data);
+			$('#result').html(data);
+		}
+	}); 
 	
 	$("#droppable").ajaxUploadDrop({
 		url: 'upload.php',
@@ -360,7 +392,6 @@ jQuery(function ($) {
 </script>
 </head>
 <body>
-<a href="https://github.com/codler/jQuery-Ajax-Upload">Ajax upload at github</a>
 <form method="post" enctype="multipart/form-data">
 <h1>Ajax Upload</h1>
 <label for="name">Name</label><input type="text" id="name" name="name" />
@@ -375,5 +406,6 @@ jQuery(function ($) {
 <div id="progress"></div>
 <div id="result">
 </div>
+<a href="https://github.com/codler/jQuery-Ajax-Upload"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://assets1.github.com/img/7afbc8b248c68eb468279e8c17986ad46549fb71?repo=&url=http%3A%2F%2Fs3.amazonaws.com%2Fgithub%2Fribbons%2Fforkme_right_darkblue_121621.png&path=" alt="Fork me on GitHub"></a>
 </body>
 </html>

@@ -1,9 +1,12 @@
 <?php 
-require_once('secure_upload.php');
+/* print_r($_POST);
+print_r($_FILES);
+die(); */
+require_once(dirname(__file__) . '/libs/secure_upload.php');
 
 $options = array(
 	'field' => 'uploads',
-	'path' => dirname(__file__) . '/img'
+	'path' => dirname(__file__) . '/demo/img'
 );
 
 $r = secure_upload($options);

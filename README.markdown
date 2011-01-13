@@ -3,8 +3,15 @@
 Browser need to support FormData
 
 * Chrome
-* Firefox 4
+* Firefox 4 (not tested yet)
 * Safari 5
+
+Fallback support (currently only on "$(button).ajaxUploadPrompt(options)")
+Will only send the file.
+
+* IE 7
+* Firefox 3.6
+* Opera 11
 
 ## Features
 
@@ -23,17 +30,17 @@ Browser need to support FormData
 	// Same as above, with a difference, it takes all values in the form.
 	$(form).ajaxUpload(options);
 	
-	// Same parameters as $.post();
-	$.ajaxUploadPost(url, [ data ], [ success(data, textStatus, XMLHttpRequest) ], [ dataType ]);
-	
-	// Same as $.ajaxUploadPost, with a difference, it will create a prompt and then send
-	$.ajaxUploadPrompt(url, [ data ], [ success(data, textStatus, XMLHttpRequest) ], [ dataType ]);
+	// Same as $.ajaxUpload, with a difference, it will create a prompt and then send
+	$.ajaxUploadPrompt(options);
 	
 	// Same as above, with a difference, it binds a click event.
-	$(button).ajaxUploadPrompt(url, [ data ], [ success(data, textStatus, XMLHttpRequest) ], [ dataType ]);
+	$(button).ajaxUploadPrompt(options);
 	
 	// Make a dropzone for uploading files
 	$(element).ajaxUploadDrop(options);
+	
+	// Same parameters as $.post();
+	$.ajaxUploadPost(url, [ data ], [ success(data, textStatus, XMLHttpRequest) ], [ dataType ]);
 
 ## Feedback
 

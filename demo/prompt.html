@@ -44,15 +44,16 @@ p {
 	width: 500px;
 }
 
-#dropzone {
+#promptzone {
 	border: 3px dashed #ccc;
+	cursor: pointer;
 	padding-top: 40px;
 	margin: 0 auto;
 	height: 100px;
 	width: 450px;
 }
 
-#dropzone span {
+#promptzone span {
 	font-size: 10px;
 }
 </style>
@@ -60,11 +61,11 @@ p {
 jQuery(function ($) {
 	// Set fieldname
 	$.ajaxUploadSettings.name = 'uploads[]';
-	// Set dropzone
-	$('#dropzone').ajaxUploadDrop({
+	// Set promptzone
+	$('#promptzone').ajaxUploadPrompt({
 		url : '../upload.php',
 		beforeSend : function () {
-			$('#dropzone, #result').hide();
+			$('#promptzone, #result').hide();
 		},
 		onprogress : function (e) {
 			if (e.lengthComputable) {
@@ -99,7 +100,7 @@ jQuery(function ($) {
 			}
 			$( "#progressbar" ).progressbar( "destroy" );
 			$('#result').html(html);
-			$('#dropzone, #result').show();
+			$('#promptzone, #result').show();
 		}
 	});
 });
@@ -107,9 +108,9 @@ jQuery(function ($) {
 </head>
 <body>
 <div id="wrapper">
-	<h1>ajaxUploadDrop()</h1>
-	<div id="dropzone">
-		Drag and drop files in this box to upload images
+	<h1>ajaxUploadPrompt()</h1>
+	<div id="promptzone">
+		Click here to choose images to upload
 		<br />
 		<span>Max 20 files, total 8mb and only image files</span>
 	</div>
