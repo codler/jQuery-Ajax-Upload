@@ -9,7 +9,7 @@ Browser need to support FormData
 Fallback support (currently only on "$(button).ajaxUploadPrompt(options)")
 Will only send the file.
 
-* IE 7
+* IE 7-8
 * Firefox 3.6
 * Opera 11
 

@@ -3,7 +3,7 @@
  * @copyright 2011 zencodez.net
  * @license http://creativecommons.org/licenses/by-sa/3.0/
  * @package Ajax-Upload
- * @version 1.6 - 2011-01-13
+ * @version 1.7 - 2011-02-01
  * @website https://github.com/codler/jQuery-Ajax-Upload
  *
  * == Description == 
@@ -111,10 +111,21 @@
 			processData : false,
 			type: 'POST',
 			beforeSend : function(xhr, s) {
-				xhr.upload.onprogress = s.onprogress;
-				xhr.upload.onabort = s.onabort;
-				xhr.upload.onerror = s.onerror;
-				xhr.upload.onload = s.onload;
+				if (xhr.upload) {
+					xhr.upload.onprogress = s.onprogress;
+					xhr.upload.onabort = s.onabort;
+					xhr.upload.onerror = s.onerror;
+					xhr.upload.onload = s.onload;
+				} else {
+					s.xhr = function () {
+						var xhr = new window.XMLHttpRequest();
+						xhr.upload.onprogress = s.onprogress;
+						xhr.upload.onabort = s.onabort;
+						xhr.upload.onerror = s.onerror;
+						xhr.upload.onload = s.onload;
+						return xhr;
+					}
+				}
 				s.data = fd;
 				if (origSettings.beforeSend) {
 					origSettings.beforeSend.call(this, xhr, s);
