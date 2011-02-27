@@ -1,5 +1,5 @@
 <?php
-require_once('kirby.php');
+require_once('kirby/kirby.php');
 /**
  * @author Han Lin Yap < http://zencodez.net/ >
  * @copyright 2011 zencodez.net
