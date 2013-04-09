@@ -18,9 +18,34 @@
  *	}
  * });
  */
+ 
+ // Function.prototype.bind polyfill
+if ( !Function.prototype.bind ) {
+
+  Function.prototype.bind = function( obj ) {
+    if(typeof this !== 'function') // closest thing possible to the ECMAScript 5 internal IsCallable function
+      throw new TypeError('Function.prototype.bind - what is trying to be bound is not callable');
+
+    var slice = [].slice,
+        args = slice.call(arguments, 1), 
+        self = this, 
+        nop = function () {}, 
+        bound = function () {
+          return self.apply( this instanceof nop ? this : ( obj || {} ), 
+                              args.concat( slice.call(arguments) ) );    
+        };
+
+    bound.prototype = this.prototype;
+
+    return bound;
+  };
+}
+ 
 (function ($) {
-	var needOverlay = $.browser.msie || $.browser.opera || 
-				($.browser.mozilla && parseInt($.browser.version.substr(0,1)) < 2);
+	
+	var needOverlay = ($.browser.msie && parseInt($.browser.version.split('.')[0]) < 10) || 
+					  $.browser.opera || 
+					  ($.browser.mozilla && parseInt($.browser.version.split('.')[0]) < 3);
 
 	$.support.ajax2 = $.support.ajax && typeof FormData != "undefined";
 	$.ajaxUploadSettings = {
@@ -33,7 +58,7 @@
 		//onloadend 	: function(e){},
 		name		: 'uploads[]'
 	}
-	
+
 	$.ajaxUploadSerializeFiles = function( element ) {
 		var data = [];
 		var name = $(element).attr('name');
@@ -45,7 +70,7 @@
 		}
 		return data;
 	}
-	
+
 	/**
 	 * @param array kv [{name, value},..]
 	 * @param FormData exist Existing FormData
@@ -57,7 +82,7 @@
 		}
 		return fd;
 	}
-	
+
 	$.ajaxUploadExtractData = function( data, exist ) {
 		if ( !data/* || $.isArray(data)*/ || data instanceof FormData ) return data;
 		var fd = $.ajaxUploadExtractData(exist) || new FormData();
@@ -88,7 +113,7 @@
 		}
 		return $.ajaxUploadToFormData(data, fd);
 	}
-	
+
 	/**
 	 * All available options as $.ajax() except
 	 * contentType
@@ -98,10 +123,10 @@
 	$.ajaxUpload = function(origSettings) {
 		// Do browser support?
 		if ( !$.support.ajax2 ) return false;
-		
+
 		// Merge Global settings
 		var s = jQuery.extend(true, {}, $.ajaxUploadSettings, origSettings);
-		
+
 		// Normalize data
 		var fd = $.ajaxUploadExtractData(s.data);
 		//fd = $.ajaxUploadToFormData(fd);
@@ -113,10 +138,10 @@
 			beforeSend : function(xhr, s) {
 				s.xhr = function () {
 					var xhr = new window.XMLHttpRequest();
-					xhr.upload.onprogress = s.onprogress;
-					xhr.upload.onabort = s.onabort;
-					xhr.upload.onerror = s.onerror;
-					xhr.upload.onload = s.onload;
+					xhr.upload.onprogress = s.onprogress.bind(this);
+					xhr.upload.onabort = s.onabort.bind(this);
+					xhr.upload.onerror = s.onerror.bind(this);
+					xhr.upload.onload = s.onload.bind(this);
 					return xhr;
 				}
 				s.data = fd;
@@ -137,7 +162,7 @@
 	$.fn.ajaxUpload = function( origSettings ) {
 		// Do browser support?
 		if ( !$.support.ajax2 ) return false;
-		
+
 		this.each(function() {
 			var data = $(this).serializeArray();
 			$('input:file', this).each(function (index, element) {
@@ -149,7 +174,7 @@
 		});
 		return this;
 	}
-	
+
 	$.ajaxUploadPost = function( url, data, callback, type ) {
 		// shift arguments if data argument was omited
 		if ( jQuery.isFunction( data ) ) {
@@ -169,11 +194,10 @@
 
 	$.ajaxUploadPrompt = function( options ) {
 		//if ( !$.support.ajax2 ) return false;
-		
-		if (!options.data) {
-			options.data = {};
-		}
-		
+
+		if (!options.data) options.data = {};
+		if (!options.accept) options.accept = '';
+
 		var nesseserySettings = {
 			success : function () {
 				if (options.success) {
@@ -182,9 +206,9 @@
 				form.remove();
 			}
 		}
-		
+
 		s = jQuery.extend(true, {}, options, nesseserySettings);
-		
+
 		var id = 'ajaxupload' + new Date().getTime();
 		var form = $('<form action="' + s.url + '" method="post" enctype="multipart/form-data" target="' + id + '" />').appendTo('body');
 		form.css({
@@ -195,13 +219,14 @@
 		});
 		form.submit(function () { //alert($(':file', this).val()); 
 		});
-		var d = $('<input type="file" multiple name="' + $.ajaxUploadSettings.name + '" />').appendTo(form);
+				
+		var d = $('<input type="file" accept="' + options.accept + '" multiple name="' + $.ajaxUploadSettings.name + '" />').appendTo(form);
 		d.change(function() {			
 			if (!this.files.length) {
 				return false;
 			}
 			s.data = $.ajaxUploadExtractData(s.data, $.ajaxUploadSerializeFiles(this));
-			
+
 			$.ajaxUpload(s);
 		});
 		d.click();
@@ -209,7 +234,7 @@
 			d.change();
 		}
 	}
-	
+
 	// bind a click event
 	$.fn.ajaxUploadPrompt = function( origSettings ) {
 		this.each(function() {
@@ -229,7 +254,7 @@
 						if (!iframe[0].parentNode){
 							return;
 						}
-						
+
 						var doc = iframe[0].contentDocument ? iframe[0].contentDocument: iframe[0].contentWindow.document
 						var data = doc.body.innerHTML;
 						if (origSettings.success) {
@@ -239,7 +264,7 @@
 						setTimeout(function () { iframe.remove(); }, 100);
 					});
 					form.submit();
-					
+
 					/* var options = jQuery.extend(true, {}, origSettings);
 					options.data = $.ajaxUploadExtractData(this.files, options.data);
 					$.ajaxUpload(options); */
@@ -252,7 +277,7 @@
 		});
 		return this;
 	}
-	
+
 	// bind a drop event
 	$.fn.ajaxUploadDrop = function( origSettings ) {
 		if ( !$.support.ajax2 ) return false;
@@ -281,13 +306,13 @@
 				}
 			}).bind("dragover",function(e) {
 				if (fakeSafariDragDrop) {
-				
+
 				} else {
 					e.stopPropagation(); e.preventDefault();
 				}
 			}).bind("drop",function(e) {
 				if (fakeSafariDragDrop) {
-				
+
 				} else {
 					e.stopPropagation(); e.preventDefault();
 					var dt = e.originalEvent.dataTransfer;  
