@@ -194,10 +194,7 @@ if ( !Function.prototype.bind ) {
 
 	$.ajaxUploadPrompt = function( options ) {
 		//if ( !$.support.ajax2 ) return false;
-
-		if (!options.data) options.data = {};
-		if (!options.accept) options.accept = '';
-
+		
 		var nesseserySettings = {
 			success : function () {
 				if (options.success) {
@@ -230,23 +227,43 @@ if ( !Function.prototype.bind ) {
 			$.ajaxUpload(s);
 		});
 		d.click();
-		if (navigator.userAgent.indexOf('Safari') > 0 && navigator.vendor.indexOf('Apple') !== -1 || $.browser.msie) {
+		if (navigator.userAgent.indexOf('Safari') > 0 && navigator.vendor.indexOf('Apple') !== -1) { // || $.browser.msie) {
 			d.change();
 		}
 	}
-
+	
 	// bind a click event
-	$.fn.ajaxUploadPrompt = function( origSettings ) {
+	$.fn.ajaxUploadPrompt = function( settings ) {
+	
+		if (this.data('processed')) return;
+		this.data('processed', '1');
+		
+		var origSettings = {
+			offset: {
+				top: 0,
+				left: 0
+			},
+			accept: '',
+			multiple: true,
+			data: {}
+		};
+		
+		$.extend(origSettings, settings);
+		
 		this.each(function() {
 			if (needOverlay) {
 				var $this = $(this);
-				var id = 'ajaxupload' + new Date().getTime();
+				var id = 'ajaxupload' + new Date().getTime() + Math.round(Math.random() * 100000);
 				var form = $('<form action="' + origSettings.url + '" method="post" enctype="multipart/form-data" target="' + id + '" />').insertAfter($this);
-				var p = $('<p style="top: ' + $this.offset().top + 'px; left: ' + $this.offset().left + 'px; height: ' + $this.outerHeight() + 'px; width: ' + $this.outerWidth() + 'px; overflow: hidden; position: absolute;"/>').appendTo(form);
-				var d = $('<input type="file" multiple name="' + $.ajaxUploadSettings.name + '" style="position: absolute; top: 0; right: 0; font-size: ' + $this.outerHeight() + 'px; cursor: pointer;" />').appendTo(p);
+				var d = $('<input type="file" multiple name="' + $.ajaxUploadSettings.name + '" style="border:1px solid red; position: absolute; z-index:2; top: 0; right: 0; cursor: pointer;" />').appendTo(form);
 				d.css({
-					opacity: 0
+					opacity: 0,
+					width: $this.outerWidth(),
+					height: $this.outerHeight(),
+					top: $this.position().top + (origSettings.offset.top || 0),
+					left: $this.position().left  + (origSettings.offset.left || 0)
 				});
+
 				d.change(function() {
 					var iframeSrc = /^https/i.test(window.location.href || '') ? 'javascript:false' : 'about:blank';
 					var iframe = $('<iframe src="' + iframeSrc + '" id="' + id + '" name="' + id + '" style="display: none;" />').appendTo('body');
@@ -258,10 +275,14 @@ if ( !Function.prototype.bind ) {
 						var doc = iframe[0].contentDocument ? iframe[0].contentDocument: iframe[0].contentWindow.document
 						var data = doc.body.innerHTML;
 						if (origSettings.success) {
-							origSettings.success.call(this, data);
+							origSettings.success.call(origSettings, data);
 						}
 						iframe.unbind('load');
 						setTimeout(function () { iframe.remove(); }, 100);
+					});
+					form.submit(function() {
+						origSettings.beforeSend.call(origSettings, {});
+						origSettings.onprogress.call(origSettings, {});
 					});
 					form.submit();
 
@@ -275,6 +296,7 @@ if ( !Function.prototype.bind ) {
 				});
 			}
 		});
+			
 		return this;
 	}
 
