@@ -222,6 +222,7 @@ if ( !Function.prototype.bind ) {
 			if (!this.files.length) {
 				return false;
 			}
+			s.files = this.files;
 			s.data = $.ajaxUploadExtractData(s.data, $.ajaxUploadSerializeFiles(this));
 
 			$.ajaxUpload(s);
@@ -265,6 +266,7 @@ if ( !Function.prototype.bind ) {
 				});
 
 				d.change(function() {
+					origSettings.files = this.files || {};
 					var iframeSrc = /^https/i.test(window.location.href || '') ? 'javascript:false' : 'about:blank';
 					var iframe = $('<iframe src="' + iframeSrc + '" id="' + id + '" name="' + id + '" style="display: none;" />').appendTo('body');
 					iframe.bind('load', function() {
@@ -338,9 +340,10 @@ if ( !Function.prototype.bind ) {
 				} else {
 					e.stopPropagation(); e.preventDefault();
 					var dt = e.originalEvent.dataTransfer;  
-					var files = dt.files;
+					var files = dt.files;							
 					var options = jQuery.extend(true, {}, origSettings);
 					options.data = $.ajaxUploadExtractData(files, options.data);
+					options.files = files;	
 					$.ajaxUpload(options);
 				}
 			});
