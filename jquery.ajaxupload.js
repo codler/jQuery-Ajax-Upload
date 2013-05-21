@@ -194,7 +194,7 @@ if ( !Function.prototype.bind ) {
 
 	$.ajaxUploadPrompt = function( options ) {
 		//if ( !$.support.ajax2 ) return false;
-		
+
 		var nesseserySettings = {
 			success : function () {
 				if (options.success) {
@@ -202,9 +202,12 @@ if ( !Function.prototype.bind ) {
 				}
 				form.remove();
 			}
-		}
+		};
 
 		s = jQuery.extend(true, {}, options, nesseserySettings);
+		
+		var multiple = ' ';
+		if (options.multiple) multiple = ' multiple ';
 
 		var id = 'ajaxupload' + new Date().getTime();
 		var form = $('<form action="' + s.url + '" method="post" enctype="multipart/form-data" target="' + id + '" />').appendTo('body');
@@ -217,7 +220,7 @@ if ( !Function.prototype.bind ) {
 		form.submit(function () { //alert($(':file', this).val()); 
 		});
 				
-		var d = $('<input type="file" accept="' + options.accept + '" multiple name="' + $.ajaxUploadSettings.name + '" />').appendTo(form);
+		var d = $('<input type="file" accept="' + options.accept + '" ' + multiple + ' name="' + $.ajaxUploadSettings.name + '" />').appendTo(form);
 		d.change(function() {			
 			if (!this.files.length) {
 				return false;
@@ -250,13 +253,19 @@ if ( !Function.prototype.bind ) {
 		};
 		
 		$.extend(origSettings, settings);
-		
+				
+		var multiple = ' ';
+		if (origSettings.multiple) multiple = ' multiple ';
+
 		this.each(function() {
 			if (needOverlay) {
 				var $this = $(this);
 				var id = 'ajaxupload' + new Date().getTime() + Math.round(Math.random() * 100000);
 				var form = $('<form action="' + origSettings.url + '" method="post" enctype="multipart/form-data" target="' + id + '" />').insertAfter($this);
-				var d = $('<input type="file" multiple name="' + $.ajaxUploadSettings.name + '" style="border:1px solid red; position: absolute; z-index:2; top: 0; right: 0; cursor: pointer;" />').appendTo(form);
+				var d = $('<input type="file" ' + multiple + ' name="' + $.ajaxUploadSettings.name + '" style="border:1px solid red; position: absolute; z-index:2; top: 0; right: 0; cursor: pointer;" />').appendTo(form);
+				$.each(origSettings.data, function(key, value) {
+					var d = $('<input type="hidden" name="' + key + '" value="' + value + '" />').appendTo(form);
+				});
 				d.css({
 					opacity: 0,
 					width: $this.outerWidth(),
@@ -304,13 +313,17 @@ if ( !Function.prototype.bind ) {
 
 	// bind a drop event
 	$.fn.ajaxUploadDrop = function( origSettings ) {
+		
+		var multiple = ' ';
+		if (origSettings.multiple) multiple = ' multiple ';
+		
 		if ( !$.support.ajax2 ) return false;
-		var fakeSafariDragDrop = navigator.userAgent.indexOf('Safari') > 0 && navigator.vendor.indexOf('Apple') !== -1;
+		var fakeSafariDragDrop = false; //navigator.userAgent.indexOf('Safari') > 0 && navigator.vendor.indexOf('Apple') !== -1;
 		this.each(function() {
 			var $this = $(this);
 			$this.one("dragenter",function(e) {
 				if (fakeSafariDragDrop) {
-					var d = $('<input type="file" multiple name="uploads[]" />').appendTo($this);
+					var d = $('<input type="file" ' + multiple + ' name="uploads[]" />').appendTo($this);
 					d.css({
 						position : 'absolute',
 						display : 'block',
@@ -328,12 +341,18 @@ if ( !Function.prototype.bind ) {
 				} else {
 					e.stopPropagation(); e.preventDefault();
 				}
+				$this.addClass('dragover');
+				
 			}).bind("dragover",function(e) {
 				if (fakeSafariDragDrop) {
 
 				} else {
 					e.stopPropagation(); e.preventDefault();
 				}
+				
+				$this.addClass('dragover');
+			}).bind("dragleave",function(e) {
+				$this.removeClass('dragover');	
 			}).bind("drop",function(e) {
 				if (fakeSafariDragDrop) {
 
@@ -346,6 +365,7 @@ if ( !Function.prototype.bind ) {
 					options.files = files;	
 					$.ajaxUpload(options);
 				}
+				$this.removeClass('dragover');
 			});
 		});
 		return this;
