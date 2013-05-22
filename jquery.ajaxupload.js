@@ -18,9 +18,34 @@
  *	}
  * });
  */
+ 
+ // Function.prototype.bind polyfill
+if ( !Function.prototype.bind ) {
+
+  Function.prototype.bind = function( obj ) {
+    if(typeof this !== 'function') // closest thing possible to the ECMAScript 5 internal IsCallable function
+      throw new TypeError('Function.prototype.bind - what is trying to be bound is not callable');
+
+    var slice = [].slice,
+        args = slice.call(arguments, 1), 
+        self = this, 
+        nop = function () {}, 
+        bound = function () {
+          return self.apply( this instanceof nop ? this : ( obj || {} ), 
+                              args.concat( slice.call(arguments) ) );    
+        };
+
+    bound.prototype = this.prototype;
+
+    return bound;
+  };
+}
+ 
 (function ($) {
-	var needOverlay = $.browser.msie || $.browser.opera || 
-				($.browser.mozilla && parseInt($.browser.version.substr(0,1)) < 2);
+	
+	var needOverlay = ($.browser.msie && parseInt($.browser.version.split('.')[0]) < 10) || 
+					  $.browser.opera || 
+					  ($.browser.mozilla && parseInt($.browser.version.split('.')[0]) < 3);
 
 	$.support.ajax2 = $.support.ajax && typeof FormData != "undefined";
 	$.ajaxUploadSettings = {
@@ -33,7 +58,7 @@
 		//onloadend 	: function(e){},
 		name		: 'uploads[]'
 	}
-	
+
 	$.ajaxUploadSerializeFiles = function( element ) {
 		var data = [];
 		var name = $(element).attr('name');
@@ -45,7 +70,7 @@
 		}
 		return data;
 	}
-	
+
 	/**
 	 * @param array kv [{name, value},..]
 	 * @param FormData exist Existing FormData
@@ -57,7 +82,7 @@
 		}
 		return fd;
 	}
-	
+
 	$.ajaxUploadExtractData = function( data, exist ) {
 		if ( !data/* || $.isArray(data)*/ || data instanceof FormData ) return data;
 		var fd = $.ajaxUploadExtractData(exist) || new FormData();
@@ -88,7 +113,7 @@
 		}
 		return $.ajaxUploadToFormData(data, fd);
 	}
-	
+
 	/**
 	 * All available options as $.ajax() except
 	 * contentType
@@ -98,10 +123,10 @@
 	$.ajaxUpload = function(origSettings) {
 		// Do browser support?
 		if ( !$.support.ajax2 ) return false;
-		
+
 		// Merge Global settings
 		var s = jQuery.extend(true, {}, $.ajaxUploadSettings, origSettings);
-		
+
 		// Normalize data
 		var fd = $.ajaxUploadExtractData(s.data);
 		//fd = $.ajaxUploadToFormData(fd);
@@ -113,10 +138,10 @@
 			beforeSend : function(xhr, s) {
 				s.xhr = function () {
 					var xhr = new window.XMLHttpRequest();
-					xhr.upload.onprogress = s.onprogress;
-					xhr.upload.onabort = s.onabort;
-					xhr.upload.onerror = s.onerror;
-					xhr.upload.onload = s.onload;
+					xhr.upload.onprogress = s.onprogress.bind(this);
+					xhr.upload.onabort = s.onabort.bind(this);
+					xhr.upload.onerror = s.onerror.bind(this);
+					xhr.upload.onload = s.onload.bind(this);
 					return xhr;
 				}
 				s.data = fd;
@@ -137,7 +162,7 @@
 	$.fn.ajaxUpload = function( origSettings ) {
 		// Do browser support?
 		if ( !$.support.ajax2 ) return false;
-		
+
 		this.each(function() {
 			var data = $(this).serializeArray();
 			$('input:file', this).each(function (index, element) {
@@ -149,7 +174,7 @@
 		});
 		return this;
 	}
-	
+
 	$.ajaxUploadPost = function( url, data, callback, type ) {
 		// shift arguments if data argument was omited
 		if ( jQuery.isFunction( data ) ) {
@@ -169,11 +194,7 @@
 
 	$.ajaxUploadPrompt = function( options ) {
 		//if ( !$.support.ajax2 ) return false;
-		
-		if (!options.data) {
-			options.data = {};
-		}
-		
+
 		var nesseserySettings = {
 			success : function () {
 				if (options.success) {
@@ -181,10 +202,13 @@
 				}
 				form.remove();
 			}
-		}
-		
+		};
+
 		s = jQuery.extend(true, {}, options, nesseserySettings);
 		
+		var multiple = ' ';
+		if (options.multiple) multiple = ' multiple ';
+
 		var id = 'ajaxupload' + new Date().getTime();
 		var form = $('<form action="' + s.url + '" method="post" enctype="multipart/form-data" target="' + id + '" />').appendTo('body');
 		form.css({
@@ -195,51 +219,84 @@
 		});
 		form.submit(function () { //alert($(':file', this).val()); 
 		});
-		var d = $('<input type="file" multiple name="' + $.ajaxUploadSettings.name + '" />').appendTo(form);
+				
+		var d = $('<input type="file" accept="' + options.accept + '" ' + multiple + ' name="' + $.ajaxUploadSettings.name + '" />').appendTo(form);
 		d.change(function() {			
 			if (!this.files.length) {
 				return false;
 			}
+			s.files = this.files;
 			s.data = $.ajaxUploadExtractData(s.data, $.ajaxUploadSerializeFiles(this));
-			
+
 			$.ajaxUpload(s);
 		});
 		d.click();
-		if (navigator.userAgent.indexOf('Safari') > 0 && navigator.vendor.indexOf('Apple') !== -1 || $.browser.msie) {
+		if (navigator.userAgent.indexOf('Safari') > 0 && navigator.vendor.indexOf('Apple') !== -1) { // || $.browser.msie) {
 			d.change();
 		}
 	}
 	
 	// bind a click event
-	$.fn.ajaxUploadPrompt = function( origSettings ) {
+	$.fn.ajaxUploadPrompt = function( settings ) {
+	
+		if (this.data('processed')) return;
+		this.data('processed', '1');
+		
+		var origSettings = {
+			offset: {
+				top: 0,
+				left: 0
+			},
+			accept: '',
+			multiple: true,
+			data: {}
+		};
+		
+		$.extend(origSettings, settings);
+				
+		var multiple = ' ';
+		if (origSettings.multiple) multiple = ' multiple ';
+
 		this.each(function() {
 			if (needOverlay) {
 				var $this = $(this);
-				var id = 'ajaxupload' + new Date().getTime();
+				var id = 'ajaxupload' + new Date().getTime() + Math.round(Math.random() * 100000);
 				var form = $('<form action="' + origSettings.url + '" method="post" enctype="multipart/form-data" target="' + id + '" />').insertAfter($this);
-				var p = $('<p style="top: ' + $this.offset().top + 'px; left: ' + $this.offset().left + 'px; height: ' + $this.outerHeight() + 'px; width: ' + $this.outerWidth() + 'px; overflow: hidden; position: absolute;"/>').appendTo(form);
-				var d = $('<input type="file" multiple name="' + $.ajaxUploadSettings.name + '" style="position: absolute; top: 0; right: 0; font-size: ' + $this.outerHeight() + 'px; cursor: pointer;" />').appendTo(p);
-				d.css({
-					opacity: 0
+				var d = $('<input type="file" ' + multiple + ' name="' + $.ajaxUploadSettings.name + '" style="border:1px solid red; position: absolute; z-index:2; top: 0; right: 0; cursor: pointer;" />').appendTo(form);
+				$.each(origSettings.data, function(key, value) {
+					var d = $('<input type="hidden" name="' + key + '" value="' + value + '" />').appendTo(form);
 				});
+				d.css({
+					opacity: 0,
+					width: $this.outerWidth(),
+					height: $this.outerHeight(),
+					top: $this.position().top + (origSettings.offset.top || 0),
+					left: $this.position().left  + (origSettings.offset.left || 0)
+				});
+
 				d.change(function() {
+					origSettings.files = this.files || {};
 					var iframeSrc = /^https/i.test(window.location.href || '') ? 'javascript:false' : 'about:blank';
 					var iframe = $('<iframe src="' + iframeSrc + '" id="' + id + '" name="' + id + '" style="display: none;" />').appendTo('body');
 					iframe.bind('load', function() {
 						if (!iframe[0].parentNode){
 							return;
 						}
-						
+
 						var doc = iframe[0].contentDocument ? iframe[0].contentDocument: iframe[0].contentWindow.document
 						var data = doc.body.innerHTML;
 						if (origSettings.success) {
-							origSettings.success.call(this, data);
+							origSettings.success.call(origSettings, data);
 						}
 						iframe.unbind('load');
 						setTimeout(function () { iframe.remove(); }, 100);
 					});
+					form.submit(function() {
+						origSettings.beforeSend.call(origSettings, {});
+						origSettings.onprogress.call(origSettings, {});
+					});
 					form.submit();
-					
+
 					/* var options = jQuery.extend(true, {}, origSettings);
 					options.data = $.ajaxUploadExtractData(this.files, options.data);
 					$.ajaxUpload(options); */
@@ -250,18 +307,23 @@
 				});
 			}
 		});
+			
 		return this;
 	}
-	
+
 	// bind a drop event
 	$.fn.ajaxUploadDrop = function( origSettings ) {
+		
+		var multiple = ' ';
+		if (origSettings.multiple) multiple = ' multiple ';
+		
 		if ( !$.support.ajax2 ) return false;
-		var fakeSafariDragDrop = navigator.userAgent.indexOf('Safari') > 0 && navigator.vendor.indexOf('Apple') !== -1;
+		var fakeSafariDragDrop = false; //navigator.userAgent.indexOf('Safari') > 0 && navigator.vendor.indexOf('Apple') !== -1;
 		this.each(function() {
 			var $this = $(this);
 			$this.one("dragenter",function(e) {
 				if (fakeSafariDragDrop) {
-					var d = $('<input type="file" multiple name="uploads[]" />').appendTo($this);
+					var d = $('<input type="file" ' + multiple + ' name="uploads[]" />').appendTo($this);
 					d.css({
 						position : 'absolute',
 						display : 'block',
@@ -279,23 +341,31 @@
 				} else {
 					e.stopPropagation(); e.preventDefault();
 				}
+				$this.addClass('dragover');
+				
 			}).bind("dragover",function(e) {
 				if (fakeSafariDragDrop) {
-				
+
 				} else {
 					e.stopPropagation(); e.preventDefault();
 				}
+				
+				$this.addClass('dragover');
+			}).bind("dragleave",function(e) {
+				$this.removeClass('dragover');	
 			}).bind("drop",function(e) {
 				if (fakeSafariDragDrop) {
-				
+
 				} else {
 					e.stopPropagation(); e.preventDefault();
 					var dt = e.originalEvent.dataTransfer;  
-					var files = dt.files;
+					var files = dt.files;							
 					var options = jQuery.extend(true, {}, origSettings);
 					options.data = $.ajaxUploadExtractData(files, options.data);
+					options.files = files;	
 					$.ajaxUpload(options);
 				}
+				$this.removeClass('dragover');
 			});
 		});
 		return this;
