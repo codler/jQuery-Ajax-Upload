@@ -1,23 +1,15 @@
-/**
- * @author Han Lin Yap < http://zencodez.net/ >
- * @copyright 2011 zencodez.net
- * @license http://creativecommons.org/licenses/by-sa/3.0/
- * @package Ajax-Upload
- * @version 1.8 - 2011-02-25
- * @website https://github.com/codler/jQuery-Ajax-Upload
- *
- * == Description == 
- * Uses native XHR to upload files, Browser requires FormData support
- *
- * == Example Usage ==
- * $.ajaxUpload({
- *	url: 'upload.php',
- *	data: ':file',
- *	success: function (data, status, xhr) {
- *		console.log(data);
- *	}
- * });
- */
+/*! Ajax-Upload - v1.9.0 - 2013-11-20 - Uses native XHR to upload files, Browser requires FormData support.
+* https://github.com/codler/jQuery-Ajax-Upload
+* Copyright (c) 2013 Han Lin Yap http://yap.nu; http://creativecommons.org/licenses/by-sa/3.0/
+* == Example Usage ==
+* $.ajaxUpload({
+*	url: 'upload.php',
+*	data: ':file',
+*	success: function (data, status, xhr) {
+*		console.log(data);
+*	}
+* });
+*/
  
  // Function.prototype.bind polyfill
 if ( !Function.prototype.bind ) {
@@ -170,7 +162,7 @@ if ( !Function.prototype.bind ) {
 			});
 			var options = jQuery.extend(true, {}, origSettings);
 			options.data = $.ajaxUploadExtractData(data, options.data);
-			$.ajaxUpload(origSettings);
+			$.ajaxUpload(options);
 		});
 		return this;
 	}
