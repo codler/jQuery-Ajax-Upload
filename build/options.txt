@@ -1,4 +1,4 @@
 secure_upload:1.0
 fetch_url:1.1
 smush:1.0
-kirby:0.4
+kirby:0.8

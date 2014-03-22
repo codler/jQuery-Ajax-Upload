@@ -1,6 +1,6 @@
 <?php
 
-c::set('version', 0.4);
+c::set('version', 0.8);
 c::set('language', 'en');
 c::set('charset', 'utf-8');
 c::set('root', dirname(__FILE__));
@@ -33,9 +33,25 @@ function go($url=false, $code=false) {
 	exit();
 }
 
+function status($response) {
+	return core::status($response);
+}
 
+function msg($response) {
+	return core::msg($response);
+}
 
+function error($response) {
+	return core::error($response);
+}
 
+function load() {
+	$root  = c::get('plugins', c::get('root') . '/plugins');
+	$files = func_get_args();
+	foreach((array)$files AS $f) {
+		include_once($root . '/' . $f . '.php');
+	}
+}
 
 
 
@@ -84,7 +100,7 @@ class a {
 		if($key) {
 			unset($array[$search]);
 		} else {
-			$found_all = false;	
+			$found_all = false;
 			while(!$found_all) {
 				$index = array_search($search, $array);
 				if($index !== false) {
@@ -95,6 +111,12 @@ class a {
 			}
 		}
 		return $array;
+	}
+
+	function inject($array, $position, $element='placeholder') {
+		$start = array_slice($array, 0, $position);
+		$end = array_slice($array, $position);
+		return array_merge($start, (array)$element, $end);
 	}
 
 	function show($array, $echo=true) {
@@ -136,7 +158,7 @@ class a {
 		}
 		return $result . str_repeat($tab, $level) . '</' . $tag . '>' . "\n";
 	}
-			
+
 	function extract($array, $key) {
 		$output = array();
 		foreach($array AS $a) if(isset($a[$key])) $output[] = $a[ $key ];
@@ -160,6 +182,10 @@ class a {
 
 	function last($array) {
 		return array_pop($array);
+	}
+
+	function random($array) {
+		return $array[array_rand($array)];
 	}
 
 	function search($array, $search) {
@@ -268,6 +294,11 @@ class browser {
 		return (in_array(self::$platform, array('ipod', 'iphone'))) ? true : false;
 	}
 
+	function ios($ua=null) {
+		self::detect($ua);
+		return (in_array(self::$platform, array('ipod', 'iphone', 'ipad'))) ? true : false;
+	}
+
 	function css($ua=null, $array=false) {
 		self::detect($ua);
 		$css[] = self::$engine;
@@ -341,6 +372,8 @@ class browser {
 			self::$platform = 'iphone';
 		} else if(strstr(self::$ua, 'ipod')) {
 			self::$platform = 'ipod';
+		} else if(strstr(self::$ua, 'ipad')) {
+			self::$platform = 'ipad';
 		} else if(strstr(self::$ua, 'mac')) {
 			self::$platform = 'mac';
 		} else if(strstr(self::$ua, 'darwin')) {
@@ -356,9 +389,9 @@ class browser {
 		}
 
 		return array(
-			'browser'	=> self::$browser,
-			'engine'	 => self::$engine,
-			'version'	=> self::$version,
+			'browser'  => self::$browser,
+			'engine'   => self::$engine,
+			'version'  => self::$version,
 			'platform' => self::$platform
 		);
 
@@ -400,7 +433,6 @@ class c {
 		return c::get();
 	}
 
-	// @since 0.4
 	function get_array($key, $default=null) {
 		$keys = array_keys(self::$config);
 		$n = array();
@@ -413,10 +445,9 @@ class c {
 		return ($n) ? $n : $default;
 	}
 	
-	// @since 0.4
 	function set_array($key, $value=null) {
 		if (!is_array($value)) {
-			$m = self::get_sub($key);
+			$m = self::get_array($key);
 			foreach($m AS $k => $v) {
 				self::set($k, $value);
 			}
@@ -425,6 +456,10 @@ class c {
 				self::set($key.'.'.$k, $v);
 			}
 		}
+	}
+	
+	function set_default($key, $value) {
+		self::set($key, self::get($key, $value));
 	}
 }
 
@@ -488,17 +523,19 @@ class content {
 */
 class cookie {
 
-	function set($key, $value, $expires=3600) {
+	function set($key, $value, $expires=3600, $domain='/') {
 		if(is_array($value)) $value = a::json($value);
-		return @setcookie($key, $value, time()+$expires, '/');
+		$_COOKIE[$key] = $value;
+		return @setcookie($key, $value, time()+$expires, $domain);
 	}
 
 	function get($key, $default=null) {
 		return a::get($_COOKIE, $key, $default);
 	}
 
-	function remove($key) {
-		return @setcookie($key, false, time()-3600, '/');
+	function remove($key, $domain='/') {
+		$_COOKIE[$key] = false;
+		return @setcookie($key, false, time()-3600, $domain);
 	}
 
 }
@@ -683,15 +720,43 @@ class db {
 
 	}
 
-	function insert($table, $input) {
-		return self::execute('INSERT INTO ' . self::prefix($table) . ' SET ' . self::values($input));
+	function insert($table, $input, $ignore=false) {
+		$ignore = ($ignore) ? ' IGNORE' : '';
+		return self::execute('INSERT' . ($ignore) . ' INTO ' . self::prefix($table) . ' SET ' . self::values($input));
+	}
+
+	function insert_all($table, $fields, $values) {
+			
+		$query = 'INSERT INTO ' . self::prefix($table) . ' (' . implode(',', $fields) . ') VALUES ';
+		$rows  = array();
+		
+		foreach($values AS $v) {    
+			$str = '(\'';
+			$sep = '';
+			
+			foreach($v AS $input) {
+				$str .= $sep . db::escape($input);            
+				$sep = "','";  
+			}
+
+			$str .= '\')';
+			$rows[] = $str;
+		}
+		
+		$query .= implode(',', $rows);
+		return db::execute($query);
+	
+	}
+
+	function replace($table, $input) {
+		return self::execute('REPLACE INTO ' . self::prefix($table) . ' SET ' . self::values($input));
 	}
 
 	function update($table, $input, $where) {
 		return self::execute('UPDATE ' . self::prefix($table) . ' SET ' . self::values($input) . ' WHERE ' . self::where($where));
 	}
 
-	function delete($table, $where="") {
+	function delete($table, $where='') {
 		$sql = 'DELETE FROM ' . self::prefix($table);
 		if(!empty($where)) $sql .= ' WHERE ' . self::where($where);
 		return self::execute($sql);
@@ -716,7 +781,7 @@ class db {
 
 	function column($table, $column, $where=null, $order=null, $page=null, $limit=null) {
 
-		$result = self::select($table, $column, $where, $order, $page, $column, false);
+		$result = self::select($table, $column, $where, $order, $page, $limit, false);
 
 		$array = array();
 		while($r = self::fetch($result)) array_push($array, a::get($r, $column));
@@ -808,11 +873,13 @@ class db {
 		$output = array();
 		foreach($input AS $key => $value) {
 			if($value === 'NOW()')
-				$output[] = $key . ' = NOW()';
+				$output[] = '`' . $key . '`' . ' = NOW()';
 			elseif(is_array($value))
-				$output[] = $key . ' = \'' . a::json($value) . '\'';
+				$output[] = '`' . $key . '`' . ' = \'' . a::json($value) . '\'';
+			elseif($value === null)
+				$output[] = '`' . $key . '`' . ' = NULL';
 			else
-				$output[] = $key . ' = \'' . self::escape($value) . '\'';
+				$output[] = '`' . $key . '`' . ' = \'' . self::escape($value) . '\'';
 		}
 		return implode(', ', $output);
 
@@ -847,7 +914,24 @@ class db {
 
 		$output = array();
 		foreach($array AS $field => $value) {
-			$output[] = $field . ' = \'' . self::escape($value) . '\'';
+			$operand = '=';
+			$operand2 = 'IN';
+			if (substr($field, -1) == '!') {
+				$operand = '!=';
+				$operand2 = 'NOT IN';
+				$field = substr($field, 0, -1);
+			} else if (substr($field, -1) == '?') {
+				$operand = 'LIKE';
+				$field = substr($field, 0, -1);
+			}
+			
+			if (is_string($value)) {
+				$output[] = '`' . $field . '`' . ' ' . $operand . ' \'' . self::escape($value) . '\'';
+			} else if(is_array($value)) {
+				$output[] = '`' . $field . '`' . ' ' . $operand2 . ' (' . implode(',', $value) . ')';
+			} else {
+				$output[] = '`' . $field . '`' . ' ' . $operand . ' ' . self::escape($value) . '';
+			}
 			$separator = ' ' . $method . ' ';
 		}
 		return implode(' ' . $method . ' ', $output);
@@ -943,6 +1027,33 @@ class dir {
 		return self::remove($dir, true);
 	}
 
+	function size($path, $recusive=true, $nice=false) {
+		if(!file_exists($path)) return false;
+		if(is_file($path)) return self::size($path, $nice);
+		$size = 0;
+		foreach(glob($path."/*") AS $file) {
+			if($file != "." && $file != "..") {
+				if($recusive) {
+					$size += self::folder_size($file, true);
+				} else {
+					$size += self::size($path);
+				}
+			}
+		}
+		return ($nice) ? self::nice_size($size) : $size;
+	}
+
+	function modified($dir, $modified=0) {
+		$files = self::read($dir);
+		foreach($files AS $file) {
+			if(!is_dir($dir . '/' . $file)) continue;
+			$filectime = filectime($dir . '/' . $file);
+			$modified  = ($filectime > $modified) ? $filectime : $modified;
+			$modified  = self::modified($dir . '/' . $file, $modified);
+		}
+		return $modified;
+	}
+
 }
 
 
@@ -1004,22 +1115,6 @@ class f {
 		return dirname($file);
 	}
 	
-	function folder_size($path, $recusive=true, $nice=false) {
-		if (!file_exists($path)) return false;
-		if (is_file($path)) return self::size($path, $nice);
-		$size = 0;
-		foreach(glob($path."/*") AS $file) {
-			if ($file != "." && $file != "..") {
-				if ($recusive) {
-					$size += self::folder_size($file, true);
-				} else {
-					$size += self::size($path);
-				}
-			}
-		}
-		return ($nice) ? self::nice_size($size) : $size;
-	}
-
 	function size($file, $nice=false) {
 		@clearstatcache();
 		$size = @filesize($file);
@@ -1109,12 +1204,12 @@ class l {
 	}
 
 	function current() {
-		if(s::get('language')) return s::get('language');		
+		if(s::get('language')) return s::get('language');
 		$lang = str::split(server::get('http_accept_language'), '-');
 		$lang = str::trim(a::get($lang, 0));
 		$lang = l::sanitize($lang);
 		s::set('language', $lang);
-		return $lang;		
+		return $lang;
 	}
 
 	function locale($language=false) {
@@ -1182,11 +1277,21 @@ class r {
 			$_REQUEST[$key] = $value;
 		}
 	}
+	
+	function method() {
+		return strtoupper(server::get('request_method'));
+	}
 
 	function get($key=false, $default=null) {
-		if(empty($key)) return $_REQUEST;
-		$value = a::get($_REQUEST, $key, $default);
+		$request = (self::method() == 'GET') ? $_REQUEST : array_merge($_REQUEST, self::body());
+		if(empty($key)) return $request;
+		$value = a::get($request, $key, $default);
 		return (!is_array($value)) ? trim(str::stripslashes($value)) : $value;
+	}
+
+	function body() {
+		@parse_str(@file_get_contents('php://input'), $body);	
+		return (array)$body;
 	}
 
 	function parse() {
@@ -1202,8 +1307,24 @@ class r {
 		return $result;
 	}
 
-	function ajax() {
-		return (server::get('http_x_requested_with') == 'XMLHttpRequest') ? true : false;
+	function is_ajax() {
+		return (strtolower(server::get('http_x_requested_with')) == 'xmlhttprequest') ? true : false;
+	}
+	
+	function is_get() {
+		return (self::method() == 'GET') ? true : false;
+	}
+	
+	function is_post() {
+		return (self::method() == 'POST') ? true : false;	
+	}
+	
+	function is_delete() {
+		return (self::method() == 'DELETE') ? true : false;	
+	}
+	
+	function is_put() {
+		return (self::method() == 'PUT') ? true : false;	
 	}
 
 	function referer($default=null) {
@@ -1213,7 +1334,7 @@ class r {
 
 }
 
-function get($key, $default=null) {
+function get($key=false, $default=null) {
 	return r::get($key, $default);
 }
 
@@ -1245,7 +1366,8 @@ class s {
 	}
 
 	function remove($key) {
-		return a::remove( & $_SESSION, $key);
+		unset($_SESSION[$key]);
+		return $_SESSION;
 	}
 
 	function start() {
@@ -1436,7 +1558,7 @@ class str {
 		$table = array_flip(self::entities());
 
 		// convert html entities to xml entities
-		return strtr($string, $table);
+		return strip_tags(strtr($string, $table));
 
 	}
 
@@ -1489,6 +1611,11 @@ class str {
 		return '<a title="' . $email . '" class="email" href="mailto:' . $email . '">' . self::encode($string, 3) . '</a>';
 	}
 
+	function link($link, $text=false) {
+		$text = ($text) ? $text : $link;
+		return '<a href="' . $link . '">' . str::html($text) . '</a>';
+	}
+
 	function short($string, $chars, $rep='…') {
 		if(str::length($string) <= $chars) return $string;
 		$string = self::substr($string,0,($chars-str::length($rep)));
@@ -1536,15 +1663,18 @@ class str {
 		else return $many;
 	}
 
-	function substr($str,$start) {
-		preg_match_all('/./u', $str, $ar);
-		if(func_num_args() >= 3) {
-			 $end = func_get_arg(2);
-			 return join('',array_slice($ar[0],$start,$end));
-		} else {
-			 return join('',array_slice($ar[0],$start));
-		}
-	}
+  /**
+   * Get part of a string
+   *
+   * @param string The string being checked
+   * @param integer The first position used in str
+   * @param integer The maximum length of the returned string
+   *
+   * @return string
+   */
+  function substr($str, $start, $end = null) {
+    return mb_substr($str, $start, ($end == null) ? mb_strlen($str, 'UTF-8') : $end, 'UTF-8');
+  }
 
 	function lower($str) {
 		return mb_strtolower($str, 'UTF-8');
@@ -1583,15 +1713,17 @@ class str {
 	}
 
 	function urlify($text) {
-		$text = trim($text);
+		$foreign = array(
+			'/À|Á|Â|Ã|Ä|Å|Ǻ|Ā|Ă|Ą|Ǎ|А/' => 'A',
+			'/à|á|â|ã|ä|å|ǻ|ā|ă|ą|ǎ|ª|а/' => 'a',
+			'/Ò|Ó|Ô|Õ|Ō|Ŏ|Ǒ|Ő|Ơ|Ø|Ǿ|О/' => 'O',
+			'/ò|ó|ô|õ|ō|ŏ|ǒ|ő|ơ|ø|ǿ|º|о/' => 'o',
+		);
+		$text = preg_replace(array_keys($foreign), array_values($foreign), $text);
 		$text = str::lower($text);
-		$text = str_replace('ä', 'ae', $text);
-		$text = str_replace('ö', 'oe', $text);
-		$text = str_replace('ü', 'ue', $text);
-		$text = str_replace('ß', 'ss', $text);
 		$text = preg_replace("![^a-z0-9]!i","-", $text);
 		$text = preg_replace("![-]{2,}!","-", $text);
-		$text = preg_replace("!-$!","", $text);
+		$text = trim($text, '-');
 		return $text;
 	}
 
@@ -1860,4 +1992,3 @@ class x {
 
 }
 
-?>
