@@ -46,3 +46,16 @@ Will only send the file.
 ## Feedback
 
 I appreciate all feedback, thanks!
+
+## Change log
+
+2013-11-20 - **v1.9**
+
+* Fix pass correct options ([codler](https://github.com/codler) [#6](https://github.com/codler/jQuery-Ajax-Upload/issues/6))
+* Fix support for IE10 & bug fixes ([santiripper](https://github.com/santiripper) [jhg](https://github.com/jhg) [#3](https://github.com/codler/jQuery-Ajax-Upload/pull/3))
+
+**... See commit log ...**
+
+2010-12-31 - **v1.0**
+
+* First commit. ([codler](https://github.com/codler))
