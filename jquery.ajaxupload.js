@@ -196,7 +196,7 @@ if ( !Function.prototype.bind ) {
 			}
 		};
 
-		s = jQuery.extend(true, {}, options, nesseserySettings);
+		var s = jQuery.extend(true, {}, options, nesseserySettings);
 		
 		var multiple = ' ';
 		if (options.multiple) multiple = ' multiple ';
