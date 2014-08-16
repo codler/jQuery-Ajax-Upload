@@ -1,18 +1,6 @@
 # Ajax Upload
 
-Browser need to support FormData
-
-* Chrome
-* Firefox 4+
-* Safari 5+
-* IE10+
-
-Fallback support (currently only on "$(button).ajaxUploadPrompt(options)")
-Will only send the file.
-
-* IE 7-8
-* Firefox 3.6
-* Opera 11
+Browser support IE10+ and all other browsers
 
 ## Features
 
@@ -48,6 +36,10 @@ Will only send the file.
 I appreciate all feedback, thanks!
 
 ## Change log
+
+2014-08-16 - **v2.0.0**
+
+Version 2 have been updated to support IE10+ and other modern browsers. If you need IE7+, use previous version. ([codler](https://github.com/codler))
 
 2013-11-20 - **v1.9**
 
