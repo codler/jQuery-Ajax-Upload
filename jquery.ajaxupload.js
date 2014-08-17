@@ -1,4 +1,4 @@
-/*! Ajax-Upload - v2.0.0 - 2014-08-16 - Uses native XHR to upload files.
+/*! Ajax-Upload - v2.0.1 - 2014-08-17 - Uses native XHR to upload files.
 * https://github.com/codler/jQuery-Ajax-Upload
 * Copyright (c) 2014 Han Lin Yap http://yap.nu; MIT license
 * == Example Usage ==
@@ -18,10 +18,6 @@
 	
 	if (!console.log) {
 		console.log = noop;
-	}
-	
-	if (!console.warn) {
-		console.warn = noop;
 	}
 }());
 
@@ -216,23 +212,25 @@
 			if (!this.files.length) {
 				return false;
 			}
+
+			if (!s.data) {
+				s.data = {};
+			}
+
 			s.files = this.files;
 			s.data = $.ajaxUploadExtractData(s.data, $.ajaxUploadSerializeFiles(this));
 
 			$.ajaxUpload(s).promise(def);
 		});
 		d.click();
-		if (navigator.userAgent.indexOf('Safari') > 0 && navigator.vendor.indexOf('Apple') !== -1) {
-			d.change();
-		}
-
+		
 		return def;
 	};
 	
 	// bind a click event
 	$.fn.ajaxUploadPrompt = function( origSettings ) {
 		return this.click(function () {
-			$this.trigger('ajaxUploadPrompt', $.ajaxUploadPrompt( origSettings ));
+			$(this).trigger('ajaxUploadPrompt', $.ajaxUploadPrompt( origSettings ));
 		});
 	};
 

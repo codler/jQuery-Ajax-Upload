@@ -37,6 +37,10 @@ I appreciate all feedback, thanks!
 
 ## Change log
 
+2014-08-17 - **v2.0.1**
+
+* Fix broken ajaxUploadPrompt()
+
 2014-08-16 - **v2.0.0**
 
 Version 2 have been updated to support IE10+ and other modern browsers. If you need IE7+, use previous version. ([codler](https://github.com/codler))
