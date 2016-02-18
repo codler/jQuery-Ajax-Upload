@@ -37,6 +37,10 @@ I appreciate all feedback, thanks!
 
 ## Change log
 
+2016-02-18 - **v2.0.2**
+
+* Fix cancel in beforeSend option ([codler](https://github.com/codler) [#11](https://github.com/codler/jQuery-Ajax-Upload/issues/11))
+
 2014-08-17 - **v2.0.1**
 
 * Fix broken ajaxUploadPrompt()
